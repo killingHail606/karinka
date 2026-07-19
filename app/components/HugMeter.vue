@@ -62,7 +62,11 @@ const caption = computed(() => {
 
       <div class="hugs__stage">
         <div class="hugs__bear" :class="{ 'is-squeezing': squeezing }">
-          <BrasovBear pose="hug" width="min(46vw, 190px)" />
+          <BrasovBear
+            pose="hug"
+            width="min(46vw, 190px)"
+            :lines="['ще!', 'обіймашки', 'мнякий', 'не відпускай']"
+          />
         </div>
 
         <svg

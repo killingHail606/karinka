@@ -17,7 +17,11 @@
   "private": true,
   "dependencies": {
     "nuxt": "^4.5.0",
+    "pg": "^8.22.0",
     "vue": "^3.5.40",
     "vue-router": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0"
   }
 }

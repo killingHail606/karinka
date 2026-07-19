@@ -25,9 +25,44 @@ function shower() {
   }, 5600)
 }
 
+const { celebrate } = useBruno()
+
 function sayYes() {
   state.value = 'yes'
   shower()
+  celebrate() // радіють усі Бруно на сторінці, не тільки цей
+}
+
+/* Форма питання */
+const question = ref('')
+const sending = ref(false)
+const sent = ref(false)
+const sendError = ref('')
+
+const MAX = 2000
+const left = computed(() => MAX - question.value.length)
+
+async function sendQuestion() {
+  const text = question.value.trim()
+  if (!text || sending.value) return
+
+  sending.value = true
+  sendError.value = ''
+
+  try {
+    await $fetch('/api/questions', { method: 'POST', body: { body: text } })
+    sent.value = true
+    question.value = ''
+  } catch {
+    sendError.value = 'Не вдалося надіслати. Спробуй ще раз або просто напиши мені.'
+  } finally {
+    sending.value = false
+  }
+}
+
+function askAnother() {
+  sent.value = false
+  sendError.value = ''
 }
 </script>
 
@@ -50,6 +85,8 @@ function sayYes() {
           :pose="state === 'yes' ? 'happy' : 'sign'"
           sign="скажи так"
           width="min(52vw, 210px)"
+          greeting="ну скажи так"
+          :lines="['скажи так', 'я чекаю', 'ну будь ласка', 'валізу вже склала?']"
         />
       </div>
 
@@ -62,10 +99,52 @@ function sayYes() {
         </button>
       </div>
 
-      <p v-if="state === 'questions'" class="rsvp__reply prose" role="status">
-        Питай будь-що і будь-коли — на все відповім. Автобус, кордон, скільки
-        днів, що брати з собою. А поки просто знай: я дуже чекаю.
-      </p>
+      <div v-if="state === 'questions'" class="ask">
+        <p class="rsvp__reply prose">
+          Питай будь-що — автобус, кордон, скільки днів, що брати з собою.
+          Напиши тут, і я побачу.
+        </p>
+
+        <form v-if="!sent" class="ask__form" @submit.prevent="sendQuestion">
+          <label class="visually-hidden" for="question">Твоє питання</label>
+          <textarea
+            id="question"
+            v-model="question"
+            class="ask__field"
+            rows="4"
+            :maxlength="MAX"
+            placeholder="Наприклад: скільки днів мене не буде і що взяти з собою?"
+            :disabled="sending"
+          />
+
+          <div class="ask__row">
+            <!-- лічильник зʼявляється тільки коли ліміт справді близько -->
+            <span v-if="left < 200" class="ask__counter" :class="{ 'is-low': left < 50 }">
+              лишилось {{ left }}
+            </span>
+            <span v-else />
+            <button
+              class="btn btn--yes ask__send"
+              type="submit"
+              :disabled="sending || !question.trim()"
+            >
+              {{ sending ? 'Надсилаю…' : 'Надіслати питання' }}
+            </button>
+          </div>
+
+          <p v-if="sendError" class="ask__error" role="alert">{{ sendError }}</p>
+        </form>
+
+        <div v-else class="ask__done" role="status">
+          <p class="ask__thanks hand">Отримав!</p>
+          <p class="prose ask__after">
+            Відповім, щойно побачу. А Бруно вже побіг думати над відповіддю.
+          </p>
+          <button class="btn btn--ask ask__more" type="button" @click="askAnother">
+            Спитати ще
+          </button>
+        </div>
+      </div>
 
       <div v-if="state === 'yes'" class="rsvp__confirmed" role="status">
         <p class="rsvp__date display">30.07 · 23:30</p>
@@ -169,6 +248,92 @@ function sayYes() {
 .rsvp__reply {
   margin: 1.8rem auto 0;
   color: #cfdcd0;
+}
+
+.ask {
+  margin-top: 0.4rem;
+}
+
+.ask__form {
+  max-width: 34rem;
+  margin: 1.2rem auto 0;
+  text-align: left;
+}
+
+.ask__field {
+  width: 100%;
+  padding: 1rem 1.1rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--fir);
+  background: var(--plaster);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  resize: vertical;
+}
+
+.ask__field::placeholder {
+  color: var(--fir-soft);
+  opacity: 0.85;
+}
+
+.ask__field:focus-visible {
+  outline: none;
+  border-color: var(--ochre);
+}
+
+.ask__field:disabled {
+  opacity: 0.6;
+}
+
+.ask__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.85rem;
+}
+
+.ask__counter {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: #9fb3a4;
+}
+
+.ask__counter.is-low {
+  color: var(--ochre);
+}
+
+.ask__send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ask__error {
+  margin-top: 0.8rem;
+  font-size: 0.92rem;
+  color: var(--ochre);
+}
+
+.ask__done {
+  margin-top: 1.6rem;
+  animation: settle 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ask__thanks {
+  font-size: clamp(2rem, 5vw, 3rem);
+  color: var(--plaster);
+}
+
+.ask__after {
+  margin: 0.4rem auto 0;
+  color: #cfdcd0;
+}
+
+.ask__more {
+  margin-top: 1.2rem;
 }
 
 .rsvp__confirmed {

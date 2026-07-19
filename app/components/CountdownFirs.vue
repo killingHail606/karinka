@@ -82,7 +82,11 @@ const firs = computed(() => (days.value === null ? 0 : Math.min(days.value, 90))
     </div>
 
     <div class="countdown__bear">
-      <BrasovBear pose="idle" width="min(30vw, 108px)" />
+      <BrasovBear
+        pose="idle"
+        width="min(30vw, 108px)"
+        :lines="['я рахую', 'ще трохи', 'не збивай!', 'скільки там?']"
+      />
       <MarginNote text="він теж рахує" :rotate="4" arrow="left" />
     </div>
   </section>
