@@ -12,7 +12,7 @@
     "postinstall": "nuxt prepare"
   },
   "engines": {
-    "node": "22.x"
+    "node": ">=22.19.0"
   },
   "private": true,
   "dependencies": {
