@@ -144,6 +144,10 @@ watch(celebrating, (on) => {
 })
 
 const activePose = computed(() => (celebrating.value ? 'happy' : props.pose))
+
+/* Дозволяємо батьківському компоненту звертатись до Бруно —
+   напр. відлік просить його промовити дату ялинки. */
+defineExpose({ say })
 </script>
 
 <template>

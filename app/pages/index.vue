@@ -47,7 +47,7 @@ onMounted(() => {
           <span class="hero__verb display">приїзди до мене в</span>
           <span class="hero__city display">Брашов</span>
         </h1>
-        <p class="hero__date">30 липня, 23:30 · твій автобус</p>
+        <p class="hero__date">30 липня, 21:00 · твій автобус</p>
         <p class="prose hero__lede">
           Тут гори починаються відразу за останнім будинком, площа пахне кавою і
           мокрим камінням, а вечорами дахи стають рудими. Ти сідаєш в автобус
