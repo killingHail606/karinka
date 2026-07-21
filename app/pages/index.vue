@@ -5,7 +5,6 @@ onMounted(() => {
     targets.forEach((el) => el.classList.add('is-visible'))
     return
   }
-
   const io = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
