@@ -94,7 +94,10 @@ const LAYOUTS: Record<'wide' | 'tall', Layout> = {
       'M -30 660 L -30 430 Q 150 330 320 380 Q 470 425 630 320 L 630 660 Z',
       'M -30 660 L -30 500 Q 180 430 350 470 Q 500 505 630 440 L 630 660 Z',
     ],
-    letters: { x: 425, y: 402, rotate: -8, size: 26 },
+    /* Праве плече гори: вище за дахи й праворуч від церкви, щоб місто,
+       яке малюється поверх, не ховало напис (гребінь тут майже на рівні
+       дахів, тож нижче напис неминуче перекривається). */
+    letters: { x: 495, y: 345, rotate: -8, size: 25 },
     ground: { x: -30, y: 618, w: 660, h: 42 },
     houses: [
       { x: 0, w: 100, h: 185, fill: 'var(--rose)' },
@@ -388,10 +391,14 @@ const flagPoints = computed(() => {
    має лишатися головним у сцені. */
 .hill-letters {
   fill: #fdf6ef;
+  /* тонкий темний контур: білий «знак» на світлому схилі інакше зникає */
+  stroke: #45594c;
+  stroke-width: 1.1;
+  paint-order: stroke;
   font-family: var(--font-display);
   font-weight: 800;
   letter-spacing: 0.3em;
-  opacity: 0.5;
+  opacity: 0.9;
   /* без цього x читався б як початок рядка, і на вузькій сцені
      напис виїжджав за правий край */
   text-anchor: middle;

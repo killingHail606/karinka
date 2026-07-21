@@ -41,7 +41,7 @@ export function useTheme() {
     }
 
     // Точка, з якої розходиться коло — центр перемикача (або курсор).
-    const x = event?.clientX ?? window.innerWidth - 48
+    const x = event?.clientX ?? 48
     const y = event?.clientY ?? 48
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),

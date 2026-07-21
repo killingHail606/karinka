@@ -24,6 +24,7 @@ const props = withDefaults(
 )
 
 const { pointerX, pointerY, pointerSeen, celebrating } = useBruno()
+const { isDark } = useTheme()
 
 const root = ref<HTMLElement | null>(null)
 const tilted = ref(false)
@@ -32,9 +33,25 @@ const bubble = ref('')
 const idle = ref<'' | 'yawn' | 'ears' | 'sniff' | 'shake'>('')
 const hearts = ref<{ id: number; dx: number; rot: number }[]>([])
 
+// Реакції на дотик у різні місця + настрій.
+const react = ref<'' | 'boop' | 'giggle' | 'joy'>('')
+const earHit = ref<'' | 'l' | 'r'>('')
+const awake = ref(false) // вночі прокидається на дотик
+const zzz = ref<{ id: number; dx: number }[]>([])
+
 let heartId = 0
+let zzzId = 0
+let combo = 0
+let lastPet = 0
+let reactTimer: ReturnType<typeof setTimeout> | undefined
+let earTimer: ReturnType<typeof setTimeout> | undefined
+let wakeTimer: ReturnType<typeof setTimeout> | undefined
+let comboTimer: ReturnType<typeof setTimeout> | undefined
+
 const reduced = () =>
   import.meta.client && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)] ?? ''
 
 /* ---- погляд за курсором ---- */
 const originX = ref(0)
@@ -63,7 +80,19 @@ const lookStyle = computed(() => ({
   '--head-y': `${(look.value.y * 1.6).toFixed(2)}px`,
   '--eye-x': `${(look.value.x * 2.2).toFixed(2)}px`,
   '--eye-y': `${(look.value.y * 1.8).toFixed(2)}px`,
+  '--lean': `${(look.value.x * 3).toFixed(2)}deg`, // тіло ледь хилиться до курсору
 }))
+
+/* Курсор близько — Бруно нашорошує вуха й пильнує. */
+const near = computed(() => {
+  if (!pointerSeen.value) return false
+  const dx = pointerX.value - originX.value
+  const dy = pointerY.value - originY.value
+  return Math.hypot(dx, dy) < 150
+})
+
+/* Уночі Бруно куняє — доки його не поторкати. */
+const sleepy = computed(() => isDark.value && !awake.value)
 
 /* ---- погладити ---- */
 function say(text: string, ms = 2600) {
@@ -73,16 +102,11 @@ function say(text: string, ms = 2600) {
   }, ms)
 }
 
-function pet() {
-  petted.value = true
-  setTimeout(() => (petted.value = false), 700)
-
-  say(props.lines[Math.floor(Math.random() * props.lines.length)] ?? 'мур')
-
+function popHearts(n: number) {
   if (reduced()) return
-  const batch = Array.from({ length: 3 }, () => ({
+  const batch = Array.from({ length: n }, () => ({
     id: heartId++,
-    dx: Math.round((Math.random() - 0.5) * 60),
+    dx: Math.round((Math.random() - 0.5) * 70),
     rot: Math.round((Math.random() - 0.5) * 40),
   }))
   hearts.value.push(...batch)
@@ -90,6 +114,81 @@ function pet() {
   setTimeout(() => {
     hearts.value = hearts.value.filter((h) => !ids.has(h.id))
   }, 1500)
+}
+
+function flash(kind: 'boop' | 'giggle' | 'joy', ms: number) {
+  react.value = kind
+  clearTimeout(reactTimer)
+  reactTimer = setTimeout(() => (react.value = ''), ms)
+}
+
+/* У яку частину ведмедика тицьнули — рахуємо в координатах viewBox (120×150),
+   тож працює за будь-якого розміру Бруно. */
+function regionAt(e: MouseEvent): 'nose' | 'ear-l' | 'ear-r' | 'belly' | 'head' {
+  const r = root.value?.getBoundingClientRect()
+  if (!r || !r.width) return 'head'
+  const vx = ((e.clientX - r.left) / r.width) * 120
+  const vy = ((e.clientY - r.top) / r.height) * 150
+  const hit = (cx: number, cy: number, rad: number) => Math.hypot(vx - cx, vy - cy) <= rad
+  if (hit(60, 56, 18)) return 'nose'
+  if (hit(32, 28, 17)) return 'ear-l'
+  if (hit(88, 28, 17)) return 'ear-r'
+  if (hit(60, 118, 27)) return 'belly'
+  return 'head'
+}
+
+/* Головна реакція на дотик: різні місця — різні емоції, а швидкі
+   повторні дотики розганяють Бруно в захват. */
+function reactAt(e: MouseEvent) {
+  // вночі — прокидається на кілька секунд
+  if (isDark.value) {
+    awake.value = true
+    clearTimeout(wakeTimer)
+    wakeTimer = setTimeout(() => (awake.value = false), 3800)
+  }
+
+  const now = Date.now()
+  combo = now - lastPet < 1200 ? combo + 1 : 1
+  lastPet = now
+  clearTimeout(comboTimer)
+  comboTimer = setTimeout(() => (combo = 0), 1500)
+
+  // серія швидких дотиків — Бруно не витримує й радіє від душі
+  if (combo >= 4) {
+    flash('joy', 900)
+    popHearts(6)
+    say(pick(['я тебе теж!', 'ще-ще!', 'найкращий день!', 'муррр 🥰']), 2200)
+    combo = 0
+    return
+  }
+
+  switch (regionAt(e)) {
+    case 'nose':
+      flash('boop', 620)
+      say(pick(['буп!', 'ой!', 'гей!']), 1600)
+      break
+    case 'ear-l':
+    case 'ear-r':
+      earHit.value = regionAt(e) === 'ear-l' ? 'l' : 'r'
+      clearTimeout(earTimer)
+      earTimer = setTimeout(() => (earHit.value = ''), 1300)
+      say(pick(['хі!', 'лоскотно', 'му?']), 1600)
+      break
+    case 'belly':
+      flash('giggle', 720)
+      popHearts(4)
+      say(pick(['ха-ха!', 'ой, лоскотно!', 'годі 😄']), 1900)
+      break
+    default:
+      pet()
+  }
+}
+
+function pet() {
+  petted.value = true
+  setTimeout(() => (petted.value = false), 700)
+  say(pick(props.lines) || 'мур')
+  popHearts(3)
 }
 
 /* ---- власне життя: випадкові дрібні дії ---- */
@@ -108,12 +207,29 @@ function scheduleIdle() {
 /* ---- привітання, коли Бруно вперше зʼявляється на екрані ---- */
 let io: IntersectionObserver | undefined
 
+/* ---- нічні «Zzz», поки Бруно куняє ---- */
+let zzzTimer: ReturnType<typeof setInterval> | undefined
+
+function scheduleZzz() {
+  zzzTimer = setInterval(() => {
+    if (!sleepy.value || reduced() || document.hidden) return
+    const id = zzzId++
+    zzz.value.push({ id, dx: Math.round((Math.random() - 0.5) * 12) })
+    setTimeout(() => {
+      zzz.value = zzz.value.filter((z) => z.id !== id)
+    }, 2600)
+  }, 2400)
+}
+
 onMounted(() => {
   measure()
   window.addEventListener('resize', measure, { passive: true })
   window.addEventListener('scroll', measure, { passive: true })
 
-  if (!reduced()) scheduleIdle()
+  if (!reduced()) {
+    scheduleIdle()
+    scheduleZzz()
+  }
 
   if (props.greeting && root.value && 'IntersectionObserver' in window) {
     io = new IntersectionObserver(
@@ -135,6 +251,11 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', measure)
   window.removeEventListener('scroll', measure)
   if (idleTimer) clearTimeout(idleTimer)
+  if (zzzTimer) clearInterval(zzzTimer)
+  clearTimeout(reactTimer)
+  clearTimeout(earTimer)
+  clearTimeout(wakeTimer)
+  clearTimeout(comboTimer)
   io?.disconnect()
 })
 
@@ -158,18 +279,36 @@ defineExpose({ say })
     :class="[
       `bruno--${activePose}`,
       idle ? `is-${idle}` : '',
-      { 'is-tilted': tilted, 'is-petted': petted, 'is-celebrating': celebrating },
+      react ? `is-${react}` : '',
+      earHit ? `is-ear-${earHit}` : '',
+      {
+        'is-tilted': tilted,
+        'is-petted': petted,
+        'is-celebrating': celebrating,
+        'is-alert': near && !sleepy,
+        'is-sleepy': sleepy,
+      },
     ]"
     :style="[{ width: props.width }, lookStyle]"
     :type="props.interactive ? 'button' : undefined"
     :aria-label="props.interactive ? 'Погладити ведмедика Бруно' : undefined"
-    @click="props.interactive && pet()"
+    @click="props.interactive && reactAt($event)"
     @mouseenter="tilted = true"
     @mouseleave="tilted = false"
   >
     <Transition name="pop">
       <span v-if="bubble" class="bruno__bubble hand">{{ bubble }}</span>
     </Transition>
+
+    <!-- нічні «Zzz» -->
+    <span
+      v-for="z in zzz"
+      :key="`z${z.id}`"
+      class="bruno__zzz hand"
+      aria-hidden="true"
+      :style="{ '--dx': `${z.dx}px` }"
+      >z</span
+    >
 
     <svg
       v-for="h in hearts"
@@ -372,6 +511,7 @@ defineExpose({ say })
 .glint {
   fill: #fff;
   opacity: 0.9;
+  transition: opacity 180ms ease;
 }
 
 .cheek {
@@ -501,6 +641,162 @@ defineExpose({ say })
 
 .bruno.is-shake .bear__head {
   animation: shake 1.1s ease-in-out;
+}
+
+/* ---- тіло ледь хилиться до курсору ---- */
+.bear {
+  transform: rotate(var(--lean, 0deg));
+  transform-origin: bottom center;
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---- курсор близько: нашорошені вуха ---- */
+.bruno.is-alert .ear {
+  transform: translateY(-2px) scale(1.1);
+  transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bruno.is-alert .ear--r {
+  transition-delay: 60ms;
+}
+
+/* ---- «буп» по носі: ніс сигналить, очі збігаються, рот охкає ---- */
+.bruno.is-boop .nose {
+  animation: honk 620ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bruno.is-boop .mouth {
+  animation: gasp 620ms ease;
+}
+
+.bruno.is-boop .eye {
+  animation: none;
+  transition: transform 200ms ease;
+}
+
+.bruno.is-boop .eyes .eye:nth-of-type(1) {
+  transform: translateX(6px) scaleY(0.8);
+}
+
+.bruno.is-boop .eyes .eye:nth-of-type(2) {
+  transform: translateX(-6px) scaleY(0.8);
+}
+
+/* відблиски ховаємо, поки очі зведені, — інакше «зіниця" й блиск
+   роз'їжджаються в різні боки */
+.bruno.is-boop .glint {
+  opacity: 0;
+}
+
+/* ---- лоскотання животика ---- */
+.bruno.is-giggle .bear__all {
+  animation: squish 700ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bruno.is-giggle .cheek {
+  opacity: 0.85;
+}
+
+/* ---- захват від серії швидких дотиків ---- */
+.bruno.is-joy .bear__all {
+  animation: hop 500ms cubic-bezier(0.28, 0.84, 0.42, 1) 2;
+}
+
+.bruno.is-joy .cheek {
+  opacity: 0.9;
+}
+
+.bruno.is-joy .arm {
+  transition: transform 200ms ease;
+}
+
+.bruno.is-joy .arm--l {
+  transform: rotate(-30deg);
+}
+
+.bruno.is-joy .arm--r {
+  transform: rotate(30deg);
+}
+
+/* ---- поторкані вушка ---- */
+.bruno.is-ear-l .ear--l {
+  animation: ear-wiggle 1.2s ease-in-out;
+}
+
+.bruno.is-ear-r .ear--r {
+  animation: ear-wiggle 1.2s ease-in-out;
+}
+
+/* ---- сон уночі: очі приплющені, дихання повільніше ---- */
+.bruno.is-sleepy .bear__all {
+  animation: breathe 5.2s ease-in-out infinite;
+}
+
+.bruno.is-sleepy .eye {
+  animation: none;
+  transform: scaleY(0.26) translateY(1.5px);
+}
+
+.bruno.is-sleepy .glint {
+  opacity: 0;
+}
+
+.bruno.is-sleepy .bear__head {
+  transform: rotate(3deg) translateY(1px);
+}
+
+.bruno.is-sleepy .mouth {
+  transform: scaleY(0.7);
+}
+
+/* ---- нічні «Zzz» ---- */
+.bruno__zzz {
+  position: absolute;
+  top: 8%;
+  left: 60%;
+  font-size: clamp(0.9rem, 4vw, 1.35rem);
+  font-weight: 700;
+  color: var(--fir-soft);
+  pointer-events: none;
+  z-index: 3;
+  animation: zzz-float 2.6s ease-out forwards;
+}
+
+@keyframes zzz-float {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6) rotate(-8deg);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(22px + var(--dx, 0px)), -48px) scale(1.15) rotate(10deg);
+  }
+}
+
+@keyframes honk {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.55);
+  }
+  60% {
+    transform: scale(0.9);
+  }
+}
+
+@keyframes gasp {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  40% {
+    transform: scaleY(1.7) translateY(1px);
+  }
 }
 
 @keyframes blink {
@@ -636,11 +932,13 @@ defineExpose({ say })
   }
 
   .head-follow,
-  .eyes {
+  .eyes,
+  .bear {
     transform: none;
   }
 
-  .bruno__heart {
+  .bruno__heart,
+  .bruno__zzz {
     display: none;
   }
 }

@@ -71,7 +71,7 @@ const stars = [
 .tt {
   position: fixed;
   top: clamp(0.85rem, 2vw, 1.25rem);
-  right: clamp(0.85rem, 2vw, 1.25rem);
+  left: clamp(0.85rem, 2vw, 1.25rem);
   z-index: 200;
   padding: 0;
   border: 0;

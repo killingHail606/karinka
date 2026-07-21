@@ -34,7 +34,7 @@ onMounted(() => {
           <BrasovBear
             pose="wave"
             width="var(--bear-w)"
-            greeting="привіт!"
+            greeting="Привіт, Карінка!"
             :lines="['мур', 'ще погладь', 'я Бруно', 'тут гарно, чесно', 'ходімо в гори']"
           />
           <MarginNote class="hero__bear-note" text="це Бруно" :rotate="5" arrow="left" />
