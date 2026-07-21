@@ -2,6 +2,7 @@
    та з ялинових схилів Тимпи. */
 
 :root {
+  color-scheme: light;
   --plaster: #fdf2ec; /* тепла персикова штукатурка — тло сторінки */
   --plaster-deep: #f7e3d6; /* та сама стіна в тіні */
   --rose: #e8a0a8; /* пудрово-рожевий фасад */
@@ -25,6 +26,51 @@
   --gutter: clamp(1.25rem, 5vw, 4rem);
   --measure: 34rem;
   --radius: 22px; /* усе кругліше — гострих кутів на цій сторінці немає */
+}
+
+/* ------------------------------------------------------------------ *
+   Темна тема — «Брашов уночі».
+   Вмикається лише вручну (data-theme="dark" на <html>); за замовчуванням
+   завжди світла. Ролі змінних ті самі, лише значення сутінкові: тло стає
+   глибоким ялиновим, «чорнило" — теплим кремом, а акценти світяться.
+ * ------------------------------------------------------------------ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --plaster: #18231d; /* глибока ялинова ніч — тло сторінки */
+  --plaster-deep: #202e26; /* панель, стіна в тіні */
+  --rose: #e79aa4; /* пастель лишається, ледь притлумлена */
+  --ochre: #f0bd5a; /* вохра світиться яскравіше */
+  --sage: #91af96; /* шавлія для ліній на темному */
+  --tile: #dc6b52; /* теракота, що жевріє */
+  --fir: #ece2d4; /* тепер це теплий крем — основний текст */
+  --fir-soft: #a3b4a7; /* другорядний текст */
+  --sky: #101713;
+}
+
+/* Плавна зміна кольору для тих, у кого немає View Transitions
+   (і як тло під круговим розкриттям). */
+body,
+.rsvp,
+.hill,
+.hill--front,
+.ground,
+.window {
+  transition: background-color 0.5s ease, color 0.5s ease, fill 0.5s ease;
+}
+
+/* ---- магія перемикання: коло, що розходиться від перемикача ---- */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none; /* прибираємо стандартний кросфейд — своя анімація в JS */
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  z-index: 1;
+}
+
+::view-transition-old(root) {
+  z-index: 0;
 }
 
 *,
@@ -112,6 +158,45 @@ p {
 .prose {
   max-width: var(--measure);
   color: var(--fir-soft);
+}
+
+/* RSVP — навмисно темна секція. У світлій темі її тло = --fir (ялина),
+   а текст = --plaster (крем). Щоб вона не «вивернулась" у темному режимі,
+   локально повертаємо змінним їхні світлі/темні ролі всередині секції. */
+:root[data-theme='dark'] .rsvp {
+  --plaster: #ece2d4; /* світлий текст усередині секції */
+  --plaster-deep: #26332b;
+  --fir: #14201a; /* темне «чорнило»: тло секції й текст кнопки «так» */
+  --sage: #9cb8a0;
+  background: #101a15;
+}
+
+/* Скайлайн у сутінках: пагорби темніють, вікна — теплі, засвічені. */
+:root[data-theme='dark'] .hill {
+  fill: #24382a;
+}
+
+:root[data-theme='dark'] .hill--front {
+  fill: #1b2b21;
+}
+
+:root[data-theme='dark'] .ground {
+  fill: #182419;
+}
+
+:root[data-theme='dark'] .facade--church,
+:root[data-theme='dark'] .tower {
+  fill: #4b4852;
+}
+
+:root[data-theme='dark'] .hill-letters {
+  fill: #f0e6d8;
+  opacity: 0.4;
+}
+
+:root[data-theme='dark'] .window {
+  fill: #ffd98c; /* світло в вікнах */
+  opacity: 0.95;
 }
 
 @media (prefers-reduced-motion: reduce) {

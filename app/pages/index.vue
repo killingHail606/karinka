@@ -24,6 +24,8 @@ onMounted(() => {
 
 <template>
   <div class="page">
+    <ThemeToggle />
+
     <header class="hero">
       <!-- Спочатку сама площа з іменем на прапорцях, і тільки потім текст -->
       <div class="hero__scene">
